@@ -1,0 +1,55 @@
+steps:
+  # 1. Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
+      - '-f'
+      - 'Dockerfile.txt'
+      - '.'
+
+  # 2. Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME'
+      - '--all-tags'
+
+  # 3. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME'
+      - '--image'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
+      - '--region'
+      - '$_REGION'
+      - '--service-account'
+      - '$_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--allow-unauthenticated'
+      - '--execution-environment'
+      - 'gen2'
+      - '--add-volume=name=data-vol,type=cloud-storage,bucket=$PROJECT_ID-gcp-datanator-data'
+      - '--add-volume-mount=volume=data-vol,mount-path=/app/data'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest'
+      - '--set-env-vars=NODE_ENV=production'
+      - '--port=3000'
+      - '--memory=2Gi'
+      - '--cpu=1'
+      - '--max-instances=1'
+      - '--no-cpu-throttling'
+
+substitutions:
+  _REGION: 'us-central1'
+  _REPO_NAME: 'datanator-repo'
+  _SERVICE_NAME: 'gcp-datanator'
+  _SERVICE_ACCOUNT: 'gcp-datanator-app-sa'
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'

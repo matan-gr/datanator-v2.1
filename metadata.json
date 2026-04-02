@@ -1,0 +1,5 @@
+{
+  "name": "GCP Datanator v2.1",
+  "description": "A sophisticated DevOps/SRE dashboard for monitoring ETL pipelines and network telemetry.",
+  "requestFramePermissions": []
+}
